@@ -8,10 +8,16 @@ private const string OUTPUT_FOLDER_PATH = @"C:\output\path";
 ...
 private const string REMAINING_OUTPUT_FILE = "remaining_code_in_views.txt";
 ...
-OutputFilePathsMap = new Dictionary<string, string>()
+OutputSolutions = new List<Solution>()
 {
-  { @"C:\search\path\solution1.sln", "solution1_code_in_views.txt" },
-  { @"C:\search\path\solution2.sln", "solution2_code_in_views.txt" }
+   new Solution {
+      Name ="Solution 1", SolutionFilePath=@"C:\path\to\solution1.sln", 
+      OutputFilePath = "solution1_code_in_views.txt", IncludedFolderPaths = new List<string>{}
+   },
+   new Solution {
+      Name ="Solution 2", SolutionFilePath=@"C:\path\to\solution2.sln", 
+      OutputFilePath = "solution2_code_in_views.txt", IncludedFolderPaths = new List<string>{}
+   }
 };
 ```
 2. Run it.
