@@ -15,7 +15,7 @@ namespace RazorCodeSearcher
         private const string REMAINING_OUTPUT_FILE = "remaining_code_in_views.txt";
         private static readonly string[] ExcludedPaths;
         private static readonly string[][] ListOfKeywords;
-        private static readonly List<Solution> OutputFilePathsMap;
+        private static readonly List<Solution> OutputSolutions;
 
         static Program()
         {
@@ -27,7 +27,7 @@ namespace RazorCodeSearcher
                 new string[] { "@", "{" }
             };
             ExcludedPaths = new string[] { @"\obj\", @"\bin\", @"\serialization" };
-            OutputFilePathsMap = new List<Solution>()
+            OutputSolutions = new List<Solution>()
             {
                 new Solution {
                     Name ="Solution 1", SolutionFilePath=@"C:\path\to\solution1.sln", OutputFilePath = "solution1_code_in_views.txt", IncludedFolderPaths = new List<string>{}
@@ -91,7 +91,7 @@ namespace RazorCodeSearcher
         static void Main(string[] args)
         {
             List<string> excludedFolderPaths = new List<string>(ExcludedPaths);
-            foreach (var solution in OutputFilePathsMap)
+            foreach (var solution in OutputSolutions)
             {
                 string solutionFilePath = solution.SolutionFilePath;
                 List<string> projectFolderPaths = GetProjectFolderPaths(solutionFilePath);
