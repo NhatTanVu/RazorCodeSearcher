@@ -48,6 +48,7 @@
     <Compile Include="Models\CodeBlock.cs" />
     <Compile Include="Models\ComplexCodeBlock.cs" />
     <Compile Include="Models\SearchResult.cs" />
+    <Compile Include="Models\Solution.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

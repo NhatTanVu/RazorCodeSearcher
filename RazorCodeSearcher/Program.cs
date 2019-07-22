@@ -15,7 +15,7 @@ namespace RazorCodeSearcher
         private const string REMAINING_OUTPUT_FILE = "remaining_code_in_views.txt";
         private static readonly string[] ExcludedPaths;
         private static readonly string[][] ListOfKeywords;
-        private static readonly Dictionary<string, string> OutputFilePathsMap;
+        private static readonly List<Solution> OutputFilePathsMap;
 
         static Program()
         {
@@ -27,10 +27,14 @@ namespace RazorCodeSearcher
                 new string[] { "@", "{" }
             };
             ExcludedPaths = new string[] { @"\obj\", @"\bin\", @"\serialization" };
-            OutputFilePathsMap = new Dictionary<string, string>()
+            OutputFilePathsMap = new List<Solution>()
             {
-                { @"C:\search\path\solution1.sln", "solution1_code_in_views.txt" },
-                { @"C:\search\path\solution2.sln", "solution2_code_in_views.txt" }
+                new Solution {
+                    Name ="Solution 1", SolutionFilePath=@"C:\path\to\solution1.sln", OutputFilePath = "solution1_code_in_views.txt", IncludedFolderPaths = new List<string>{}
+                },
+                new Solution {
+                    Name ="Solution 2", SolutionFilePath=@"C:\path\to\solution2.sln", OutputFilePath = "solution2_code_in_views.txt", IncludedFolderPaths = new List<string>{}
+                }
             };
         }
 
@@ -87,10 +91,12 @@ namespace RazorCodeSearcher
         static void Main(string[] args)
         {
             List<string> excludedFolderPaths = new List<string>(ExcludedPaths);
-            foreach (string solutionFilePath in OutputFilePathsMap.Keys)
+            foreach (var solution in OutputFilePathsMap)
             {
+                string solutionFilePath = solution.SolutionFilePath;
                 List<string> projectFolderPaths = GetProjectFolderPaths(solutionFilePath);
-                string outputPath = OutputFilePathsMap[solutionFilePath];
+                projectFolderPaths.AddRange(solution.IncludedFolderPaths);
+                string outputPath = solution.OutputFilePath;
                 excludedFolderPaths.AddRange(projectFolderPaths);
                 List<SearchResult> searchResult = SearchFiles(SEARCH_PATH, SEARCH_FILTER, ListOfKeywords, ExcludedPaths, projectFolderPaths);
                 File.WriteAllLines(Path.Combine(OUTPUT_FOLDER_PATH, outputPath), searchResult.Select(res => res.ToString()));
