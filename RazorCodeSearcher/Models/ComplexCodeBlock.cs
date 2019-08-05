@@ -24,9 +24,11 @@ namespace RazorCodeSearcher.Models
             }
         }
 
+        public ComplexCodeBlock(string[] keywords, string filePath) : base(keywords, filePath) { }
+
         public void AddBlock(CodeBlock block)
         {
-            if (HasContent)
+            if (HasContent && codeBlocks.Last().EndLine + 1 < block.StartLine)
                 Content.Add(new KeyValuePair<string, string>("xxx", BETWEEN_BLOCKS_SEPARATOR));
             codeBlocks.Add(block);
             Content.AddRange(block.Content);

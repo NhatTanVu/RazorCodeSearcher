@@ -9,8 +9,12 @@ namespace RazorCodeSearcher.Models
         public const string BEGIN_BLOCK = "{";
         public const string BEGIN_BLOCK_2_0 = "@{";
         public const string END_BLOCK = "}";
+        public const string BEGIN_COMMENT_BLOCK = "@*";
+        public const string END_COMMENT_BLOCK = "*@";
         public const string LINE_FORMATTER = "Line {0}: {1}";
         public const string BEGIN_BLOCK_SEPARATOR = "------------------------------------";
+        public const string ELLIPSIS = "...";
+        public const char ASTERISK = '$';
 
         public string[] Keywords { get; set; }
         public List<KeyValuePair<string, string>> Content { get; set; }
@@ -26,8 +30,10 @@ namespace RazorCodeSearcher.Models
             }
         }
 
-        public CodeBlock()
+        public CodeBlock(string[] keywords, string filePath)
         {
+            Keywords = keywords;
+            FilePath = filePath;
             Content = new List<KeyValuePair<string, string>>();
         }
 

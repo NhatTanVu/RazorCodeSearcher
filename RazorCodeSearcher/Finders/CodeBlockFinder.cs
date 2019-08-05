@@ -10,9 +10,7 @@ namespace RazorCodeSearcher.Finders
         {
             if (toLine == -1)
                 toLine = fileContent.Count - 1;
-            outputBlock = new CodeBlock();
-            outputBlock.Keywords = new string[] { keyword };
-            outputBlock.FilePath = filePath;
+            outputBlock = new CodeBlock(new string[] { keyword }, filePath);
             bool isFound = false;
             if (isExactlyFrom)
             {
@@ -21,7 +19,7 @@ namespace RazorCodeSearcher.Finders
                 if (trimLine.StartsWith(keyword))
                 {
                     isFound = true;
-                    outputBlock.StartLine = fromLine;
+                    outputBlock.StartLine = outputBlock.EndLine = fromLine;
                 }
             }
             else
@@ -32,7 +30,7 @@ namespace RazorCodeSearcher.Finders
                     string trimLine = line.Replace(" ", string.Empty).Replace("\t", string.Empty);
                     if (trimLine.StartsWith(keyword))
                     {
-                        outputBlock.StartLine = i;
+                        outputBlock.StartLine = outputBlock.EndLine = i;
                         isFound = true;
                         break;
                     }
@@ -40,33 +38,60 @@ namespace RazorCodeSearcher.Finders
             }
             if (isFound)
             {
-                string trimLine = fileContent[outputBlock.StartLine].Replace(" ", string.Empty).Replace("\t", string.Empty);
-                if (trimLine.StartsWith(keyword + CodeBlock.BEGIN_BLOCK) ||
-                    ((keyword == CodeBlock.BEGIN_BLOCK || keyword == CodeBlock.BEGIN_BLOCK_2_0) && !trimLine.EndsWith(CodeBlock.END_BLOCK)))
+                string trimLine;
+                for (int i = outputBlock.StartLine + 1; i <= toLine; i++)
                 {
-                    int numOfBeginBlock = 1;
-                    for (int i = outputBlock.StartLine + 1; i <= toLine && numOfBeginBlock > 0; i++)
+                    string line = fileContent[i];
+                    trimLine = line.Replace(" ", string.Empty).Replace("\t", string.Empty);
+                    if (trimLine.StartsWith(keyword) || string.IsNullOrEmpty(trimLine))
                     {
-                        string trimLine2 = fileContent[i].Replace(" ", string.Empty).Replace("\t", string.Empty);
-                        if (trimLine2.Contains(CodeBlock.BEGIN_BLOCK))
-                            numOfBeginBlock++;
-                        else if (trimLine2.Contains(CodeBlock.END_BLOCK))
-                            numOfBeginBlock--;
+                        outputBlock.EndLine = i;
+                    }
+                    else
+                        break;
+                }
 
-                        if (numOfBeginBlock == 0)
+                if (outputBlock.EndLine < toLine)
+                {
+                    trimLine = fileContent[outputBlock.EndLine].Replace(" ", string.Empty).Replace("\t", string.Empty);
+                    string nextTrimLine = fileContent[outputBlock.EndLine + 1].Replace(" ", string.Empty).Replace("\t", string.Empty);
+                    if (trimLine.StartsWith(CodeBlock.BEGIN_COMMENT_BLOCK))
+                    {
+                        for (int i = outputBlock.EndLine; i <= toLine; i++)
                         {
-                            outputBlock.EndLine = i;
-                            break;
+                            string trimLine2 = fileContent[i].Replace(" ", string.Empty).Replace("\t", string.Empty);
+                            if (trimLine2.EndsWith(CodeBlock.END_COMMENT_BLOCK))
+                            {
+                                outputBlock.EndLine = i;
+                                break;
+                            }
                         }
                     }
-                    if (numOfBeginBlock > 0)
+                    else if (trimLine.EndsWith(CodeBlock.BEGIN_BLOCK) || nextTrimLine.EndsWith(CodeBlock.BEGIN_BLOCK))
                     {
-                        outputBlock.EndLine = -1;
-                        isFound = false;
+                        int numOfBeginBlock = 1;
+                        int i = trimLine.EndsWith(CodeBlock.BEGIN_BLOCK) ? outputBlock.EndLine + 1 : outputBlock.EndLine + 2;
+                        for (; i <= toLine && numOfBeginBlock > 0; i++)
+                        {
+                            string trimLine2 = fileContent[i].Replace(" ", string.Empty).Replace("\t", string.Empty);
+                            if (trimLine2.Contains(CodeBlock.BEGIN_BLOCK))
+                                numOfBeginBlock++;
+                            if (trimLine2.Contains(CodeBlock.END_BLOCK))
+                                numOfBeginBlock--;
+
+                            if (numOfBeginBlock == 0)
+                            {
+                                outputBlock.EndLine = i;
+                                break;
+                            }
+                        }
+                        if (numOfBeginBlock > 0)
+                        {
+                            outputBlock.EndLine = -1;
+                            isFound = false;
+                        }
                     }
                 }
-                else
-                    outputBlock.EndLine = outputBlock.StartLine;
             }
             if (isFound)
             {

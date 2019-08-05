@@ -45,8 +45,10 @@
   <ItemGroup>
     <Compile Include="Finders\CodeBlockFinder.cs" />
     <Compile Include="Finders\ComplexCodeBlockFinder.cs" />
+    <Compile Include="Finders\KeywordFinder.cs" />
     <Compile Include="Models\CodeBlock.cs" />
     <Compile Include="Models\ComplexCodeBlock.cs" />
+    <Compile Include="Models\KeywordsSearchResult.cs" />
     <Compile Include="Models\SearchResult.cs" />
     <Compile Include="Models\Solution.cs" />
     <Compile Include="Program.cs" />

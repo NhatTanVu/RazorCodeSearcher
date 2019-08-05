@@ -11,30 +11,30 @@ namespace RazorCodeSearcher.Finders
         {
             if (toLine == -1)
                 toLine = fileContent.Count - 1;
-            outputBlock = new ComplexCodeBlock();
-            outputBlock.Keywords = keywords;
-            outputBlock.FilePath = filePath;
+            outputBlock = new ComplexCodeBlock(keywords, filePath);
             bool isFound = true;
             int fileLength = fileContent.Count;
             for (int i = 0; i < keywords.Length; i++)
             {
                 string keyword = keywords[i];
-                bool isExactlyFrom = (i > 0);
+                bool isExactlyFrom = !keyword.StartsWith(CodeBlock.ELLIPSIS);
+                bool isOptional = keyword.EndsWith(CodeBlock.ASTERISK.ToString());
                 CodeBlock block;
-                if (fromLine < fileLength & toLine < fileLength)
+                if (fromLine < fileLength && toLine < fileLength)
                 {
-                    if (innerFinder.FindFirst(keyword, filePath, fileContent, isExactlyFrom, out block, fromLine, toLine))
+                    string realKeyword = keyword.Replace(CodeBlock.ELLIPSIS, string.Empty).TrimEnd(CodeBlock.ASTERISK);
+                    if (innerFinder.FindFirst(realKeyword, filePath, fileContent, isExactlyFrom, out block, fromLine, toLine))
                     {
                         fromLine = block.EndLine + 1;
                         outputBlock.AddBlock(block);
                     }
-                    else
+                    else if(!isOptional)
                     {
                         isFound = false;
                         break;
                     }
                 }
-                else
+                else if(!isOptional)
                 {
                     isFound = false;
                     break;
@@ -42,23 +42,23 @@ namespace RazorCodeSearcher.Finders
             }
             if (!isFound)
             {
-                outputBlock = new ComplexCodeBlock();
+                outputBlock = new ComplexCodeBlock(keywords, filePath);
             }
             else if (!outputBlock.HasContent)
                 isFound = false;
             return isFound;
         }
 
-        public bool FindAll(string[] keywords, string filePath, List<string> fileContent, out List<ComplexCodeBlock> outputBlocks, int fromLine = 0, int toLine = -1)
+        public bool FindAll(string[] keywords, string filePath, List<string> fileContent, out ComplexCodeBlock outputBlock, int fromLine = 0, int toLine = -1)
         {
             if (toLine == -1)
                 toLine = fileContent.Count - 1;
-            outputBlocks = new List<ComplexCodeBlock>();
+            outputBlock = new ComplexCodeBlock(keywords, filePath);
             ComplexCodeBlock firstBlock;
             bool isFound = FindFirst(keywords, filePath, fileContent, out firstBlock, fromLine, toLine);
             if (isFound)
             {
-                outputBlocks.Add(firstBlock);
+                outputBlock.AddBlock(firstBlock);
                 if (firstBlock.EndLine < toLine)
                 {
                     ComplexCodeBlock nextBlock;
@@ -67,7 +67,7 @@ namespace RazorCodeSearcher.Finders
                     {
                         if (FindFirst(keywords, filePath, fileContent, out nextBlock, fromNextLine, toLine))
                         {
-                            outputBlocks.Add(nextBlock);
+                            outputBlock.AddBlock(nextBlock);
                             fromNextLine = nextBlock.EndLine + 1;
                         }
                         else

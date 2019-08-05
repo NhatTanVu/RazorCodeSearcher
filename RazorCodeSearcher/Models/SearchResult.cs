@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace RazorCodeSearcher.Models
 {
@@ -8,26 +11,16 @@ namespace RazorCodeSearcher.Models
         public const string SEARCH_RESULT_SEPARATOR = "------------------------------------";
         public const string BLOCK_SEPARATOR = "------------------------------------";
         public const string KEYWORDS_SEPARATOR = ", ";
-        private string[] listOfKeywords;
-        private ComplexCodeBlock[] blocks;
-        public string FilePath { get; set; }
-        public SearchResult(string[] listOfKeywords, ComplexCodeBlock[] blocks)
+        protected List<ComplexCodeBlock> blocks = new List<ComplexCodeBlock>();
+
+        public SearchResult() { }
+        public SearchResult(ComplexCodeBlock[] blocks)
         {
-            this.listOfKeywords = listOfKeywords;
-            this.blocks = blocks;
+            this.blocks = new List<ComplexCodeBlock>(blocks);
         }
-        public bool HasContent()
+        public virtual bool HasContent()
         {
-            return this.blocks.Length > 0 && this.blocks.All(b => b.HasContent);
-        }
-        public override string ToString()
-        {
-            return string.Join(Environment.NewLine, new string[] {
-                SEARCH_RESULT_SEPARATOR,
-                "KEYWORDS: " + string.Join(KEYWORDS_SEPARATOR, listOfKeywords),
-                HasContent() ? string.Join(Environment.NewLine, blocks.Select(b => b.ToString())) : (BLOCK_SEPARATOR + Environment.NewLine + "N/A"),
-                SEARCH_RESULT_SEPARATOR
-            });
+            return this.blocks.Count > 0 && this.blocks.All(b => b.HasContent);
         }
     }
 }

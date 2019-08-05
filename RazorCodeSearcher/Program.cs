@@ -13,6 +13,7 @@ namespace RazorCodeSearcher
         private const string SEARCH_PATH = @"C:\search\path";
         private const string OUTPUT_FOLDER_PATH = @"C:\output\path";
         private const string REMAINING_OUTPUT_FILE = "remaining_code_in_views.txt";
+        private const string KEYWORD_OUTPUT_FILE = "keywords.txt";
         private static readonly string[] ExcludedPaths;
         private static readonly string[][] ListOfKeywords;
         private static readonly List<Solution> OutputSolutions;
@@ -20,11 +21,18 @@ namespace RazorCodeSearcher
         static Program()
         {
             ListOfKeywords = new string[][] {
-                new string[] { "@functions" },
-                new string[] { "@functions", "{" },
-                new string[] { "@Html.Raw", "@Model.", "@Html.Raw" },
-                new string[] { "@{" },
-                new string[] { "@", "{" }
+                //new string[] { CodeBlock.ELLIPSIS + "@functions" },
+                //new string[] { CodeBlock.ELLIPSIS + "@Html.Raw", CodeBlock.ELLIPSIS + "@Model.", CodeBlock.ELLIPSIS + "@Html.Raw" },
+                //new string[] { CodeBlock.ELLIPSIS + "@Html.Raw" },
+                //new string[] { CodeBlock.ELLIPSIS + "@*" },
+                //new string[] { CodeBlock.ELLIPSIS + "@foreach" },
+                //new string[] { CodeBlock.ELLIPSIS + "@if" },
+                //new string[] { CodeBlock.ELLIPSIS + "@for" },
+                //new string[] { CodeBlock.ELLIPSIS + "@(" }, //REMOVED
+                //new string[] { CodeBlock.ELLIPSIS + "@:" }, //REMOVED
+                //new string[] { CodeBlock.ELLIPSIS + "@ViewBag" }, //REMOVED
+                //new string[] { CodeBlock.ELLIPSIS + "@do" }, //REMOVED
+                //new string[] { CodeBlock.ELLIPSIS + "@" }
             };
             ExcludedPaths = new string[] { @"\obj\", @"\bin\", @"\serialization" };
             OutputSolutions = new List<Solution>()
@@ -38,9 +46,9 @@ namespace RazorCodeSearcher
             };
         }
 
-        private static List<SearchResult> SearchFiles(string path, string filter, string[][] listOfKeywords, string[] excludedPaths, List<string> projectFolderPaths = null)
+        private static List<KeywordsSearchResult> SearchCodeBlocks(string path, string filter, string[][] listOfKeywords, string[] excludedPaths, List<string> projectFolderPaths = null)
         {
-            List<SearchResult> outputBlocks = new List<SearchResult>();
+            List<KeywordsSearchResult> outputBlocks = new List<KeywordsSearchResult>();
             string[] searchFiles = Directory.GetFiles(path, filter, SearchOption.AllDirectories);
             ComplexCodeBlockFinder finder = new ComplexCodeBlockFinder();
             foreach (string[] keywords in listOfKeywords)
@@ -52,14 +60,14 @@ namespace RazorCodeSearcher
                         (projectFolderPaths == null || projectFolderPaths.Any(p => file.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0)))
                     {
                         var lines = File.ReadLines(file).ToList();
-                        List<ComplexCodeBlock> blocks;
-                        if (finder.FindAll(keywords, file, lines, out blocks))
+                        ComplexCodeBlock block;
+                        if (finder.FindAll(keywords, file, lines, out block))
                         {
-                            blocksList.AddRange(blocks);
+                            blocksList.Add(block);
                         }
                     }
                 }
-                outputBlocks.Add(new SearchResult(keywords, blocksList.ToArray()));
+                outputBlocks.Add(new KeywordsSearchResult(keywords, blocksList.ToArray()));
             }
             return outputBlocks;
         }
@@ -88,8 +96,27 @@ namespace RazorCodeSearcher
             return folderPaths;
         }
 
+        private static List<string> SearchKeywords(string path, string filter, string[] excludedPaths)
+        {
+            List<string> keywords = new List<string>();
+            string[] searchFiles = Directory.GetFiles(path, filter, SearchOption.AllDirectories);
+            KeywordFinder finder = new KeywordFinder();
+            foreach (string file in searchFiles)
+            {
+                if (!excludedPaths.Any(p => file.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    var lines = File.ReadLines(file).ToList();
+                    keywords = keywords.Union(finder.FindAll(file, lines)).ToList();
+                }
+            }
+            return keywords;
+        }
+
         static void Main(string[] args)
         {
+            List<string> keywords = SearchKeywords(SEARCH_PATH, SEARCH_FILTER, ExcludedPaths);
+            File.WriteAllLines(Path.Combine(OUTPUT_FOLDER_PATH, KEYWORD_OUTPUT_FILE), keywords);
+
             List<string> excludedFolderPaths = new List<string>(ExcludedPaths);
             foreach (var solution in OutputSolutions)
             {
@@ -98,10 +125,10 @@ namespace RazorCodeSearcher
                 projectFolderPaths.AddRange(solution.IncludedFolderPaths);
                 string outputPath = solution.OutputFilePath;
                 excludedFolderPaths.AddRange(projectFolderPaths);
-                List<SearchResult> searchResult = SearchFiles(SEARCH_PATH, SEARCH_FILTER, ListOfKeywords, ExcludedPaths, projectFolderPaths);
+                List<KeywordsSearchResult> searchResult = SearchCodeBlocks(SEARCH_PATH, SEARCH_FILTER, ListOfKeywords, ExcludedPaths, projectFolderPaths);
                 File.WriteAllLines(Path.Combine(OUTPUT_FOLDER_PATH, outputPath), searchResult.Select(res => res.ToString()));
             }
-            List<SearchResult> remainingSearchResults = SearchFiles(SEARCH_PATH, SEARCH_FILTER, ListOfKeywords, excludedFolderPaths.ToArray());
+            List<KeywordsSearchResult> remainingSearchResults = SearchCodeBlocks(SEARCH_PATH, SEARCH_FILTER, ListOfKeywords, excludedFolderPaths.ToArray());
             File.WriteAllLines(Path.Combine(OUTPUT_FOLDER_PATH, REMAINING_OUTPUT_FILE), remainingSearchResults.Select(res => res.ToString()));
         }
     }
