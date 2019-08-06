@@ -13,8 +13,13 @@ namespace RazorCodeSearcher.Models
         public const string END_COMMENT_BLOCK = "*@";
         public const string LINE_FORMATTER = "Line {0}: {1}";
         public const string BEGIN_BLOCK_SEPARATOR = "------------------------------------";
-        public const string ELLIPSIS = "...";
+        public const string ELLIPSIS = "[...]";
         public const char ASTERISK = '$';
+        public const string CODE_GENERAL = "@";
+        public const string BEGIN_GROUP_SEPARATOR = "<<------BEGIN GROUP------>>";
+        public const string END_GROUP_SEPARATOR = "<<------END GROUP------>>";
+
+        private string normalizedString = string.Empty;
 
         public string[] Keywords { get; set; }
         public List<KeyValuePair<string, string>> Content { get; set; }
@@ -27,6 +32,15 @@ namespace RazorCodeSearcher.Models
             {
                 return (Content.Count > 0) &&
                     string.Join("", Content.Select(c => c.Value)).Replace(" ", string.Empty).Replace("\t", string.Empty) != string.Join("", Keywords).Replace(" ", string.Empty).Replace("\t", string.Empty);
+            }
+        }
+        public string NormalizedString
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(normalizedString))
+                    NormalizeString();
+                return normalizedString;
             }
         }
 
@@ -49,6 +63,14 @@ namespace RazorCodeSearcher.Models
                 });
             else
                 return string.Empty;
+        }
+
+        public void NormalizeString()
+        {
+            if (HasContent)
+                this.normalizedString = string.Join(CodeBlock.ELLIPSIS, Content.Select(c => c.Value).Where(c => !string.IsNullOrEmpty(c.Replace(" ", string.Empty).Replace("\t", string.Empty))));
+            else
+                this.normalizedString = string.Empty;
         }
     }
 }

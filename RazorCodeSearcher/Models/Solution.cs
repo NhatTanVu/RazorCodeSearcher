@@ -11,7 +11,7 @@ namespace RazorCodeSearcher.Models
         public string Name { get; set; }
         public string SolutionFilePath { get; set; }
         public List<string> IncludedFolderPaths { get; set; }
-        public string OutputFilePath { get; set; }
+        public string OutputFolder { get; set; }
 
         public Solution()
         {

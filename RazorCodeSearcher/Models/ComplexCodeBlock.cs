@@ -32,6 +32,7 @@ namespace RazorCodeSearcher.Models
                 Content.Add(new KeyValuePair<string, string>("xxx", BETWEEN_BLOCKS_SEPARATOR));
             codeBlocks.Add(block);
             Content.AddRange(block.Content);
+            NormalizeString();
         }
     }
 }

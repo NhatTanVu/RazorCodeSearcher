@@ -14,42 +14,54 @@ namespace RazorCodeSearcher
         private const string OUTPUT_FOLDER_PATH = @"C:\output\path";
         private const string REMAINING_OUTPUT_FILE = "remaining_code_in_views.txt";
         private const string KEYWORD_OUTPUT_FILE = "keywords.txt";
+        private const string DISTANCE_OUTPUT_FILE = "distances.txt";
+        private const string CODE_OUTPUT_FILE = "code_{0}.txt";
+        private const string SIMILAR_FOLDER = "Similar";
+        private const string REMAINING_FOLDER = "Remaining_code";
+        private const string FILE_EXT = ".txt";
+        private const SimilarityLevel MAX_LEVEL = SimilarityLevel.Medium;
         private static readonly string[] ExcludedPaths;
         private static readonly string[][] ListOfKeywords;
         private static readonly List<Solution> OutputSolutions;
+        
 
         static Program()
         {
             ListOfKeywords = new string[][] {
-                //new string[] { CodeBlock.ELLIPSIS + "@functions" },
-                //new string[] { CodeBlock.ELLIPSIS + "@Html.Raw", CodeBlock.ELLIPSIS + "@Model.", CodeBlock.ELLIPSIS + "@Html.Raw" },
-                //new string[] { CodeBlock.ELLIPSIS + "@Html.Raw" },
-                //new string[] { CodeBlock.ELLIPSIS + "@*" },
-                //new string[] { CodeBlock.ELLIPSIS + "@foreach" },
-                //new string[] { CodeBlock.ELLIPSIS + "@if" },
-                //new string[] { CodeBlock.ELLIPSIS + "@for" },
+                new string[] { CodeBlock.ELLIPSIS + CodeBlock.BEGIN_COMMENT_BLOCK },
+                new string[] { CodeBlock.ELLIPSIS + "@functions" },
+                
+                new string[] { CodeBlock.ELLIPSIS + "@Html.Raw", CodeBlock.ELLIPSIS + "@Model.", CodeBlock.ELLIPSIS + "@Html.Raw" },
+                new string[] { CodeBlock.ELLIPSIS + "@foreach" },
+                new string[] { CodeBlock.ELLIPSIS + "@if", CodeBlock.ELLIPSIS + "else" + CodeBlock.ASTERISK },
+                new string[] { CodeBlock.ELLIPSIS + "@for" },
+                new string[] { CodeBlock.ELLIPSIS + "@" }
+
+                //new string[] { CodeBlock.ELLIPSIS + "@Html.Raw" }, //REMOVED
                 //new string[] { CodeBlock.ELLIPSIS + "@(" }, //REMOVED
                 //new string[] { CodeBlock.ELLIPSIS + "@:" }, //REMOVED
                 //new string[] { CodeBlock.ELLIPSIS + "@ViewBag" }, //REMOVED
                 //new string[] { CodeBlock.ELLIPSIS + "@do" }, //REMOVED
-                //new string[] { CodeBlock.ELLIPSIS + "@" }
             };
             ExcludedPaths = new string[] { @"\obj\", @"\bin\", @"\serialization" };
             OutputSolutions = new List<Solution>()
             {
                 new Solution {
-                    Name ="Solution 1", SolutionFilePath=@"C:\path\to\solution1.sln", OutputFilePath = "solution1_code_in_views.txt", IncludedFolderPaths = new List<string>{}
+                    Name ="Solution 1", SolutionFilePath=@"C:\path\to\solution1.sln", OutputFolder = "Solution 1", IncludedFolderPaths = new List<string>{}
                 },
                 new Solution {
-                    Name ="Solution 2", SolutionFilePath=@"C:\path\to\solution2.sln", OutputFilePath = "solution2_code_in_views.txt", IncludedFolderPaths = new List<string>{}
+                    Name ="Solution 2", SolutionFilePath=@"C:\path\to\solution2.sln", OutputFolder = "Solution 2", IncludedFolderPaths = new List<string>{}
                 }
             };
         }
 
-        private static List<KeywordsSearchResult> SearchCodeBlocks(string path, string filter, string[][] listOfKeywords, string[] excludedPaths, List<string> projectFolderPaths = null)
+        private static List<KeywordsSearchResult> SearchCodeBlocks(string searchPath, string filter, string[][] listOfKeywords, 
+            string[] excludedPaths, string outputFolder, List<string> projectFolderPaths = null)
         {
+            Directory.CreateDirectory(Path.Combine(OUTPUT_FOLDER_PATH, outputFolder));
+
             List<KeywordsSearchResult> outputBlocks = new List<KeywordsSearchResult>();
-            string[] searchFiles = Directory.GetFiles(path, filter, SearchOption.AllDirectories);
+            string[] searchFiles = Directory.GetFiles(searchPath, filter, SearchOption.AllDirectories);
             ComplexCodeBlockFinder finder = new ComplexCodeBlockFinder();
             foreach (string[] keywords in listOfKeywords)
             {
@@ -67,7 +79,10 @@ namespace RazorCodeSearcher
                         }
                     }
                 }
-                outputBlocks.Add(new KeywordsSearchResult(keywords, blocksList.ToArray()));
+                var keywordSearchResult = new KeywordsSearchResult(keywords, blocksList.ToArray());
+                string outputFilePath = Path.Combine(OUTPUT_FOLDER_PATH, outputFolder, string.Format(CODE_OUTPUT_FILE, keywordSearchResult.GetFileName()));
+                File.WriteAllText(outputFilePath, keywordSearchResult.ToString());
+                outputBlocks.Add(keywordSearchResult);
             }
             return outputBlocks;
         }
@@ -112,6 +127,28 @@ namespace RazorCodeSearcher
             return keywords;
         }
 
+        private static void SearchSimilarCodeBlockPairs(List<KeywordsSearchResult> searchResults, string outputFolder)
+        {
+            Directory.CreateDirectory(Path.Combine(OUTPUT_FOLDER_PATH, outputFolder));
+            Directory.CreateDirectory(Path.Combine(OUTPUT_FOLDER_PATH, outputFolder, SIMILAR_FOLDER));
+
+            File.WriteAllLines(Path.Combine(OUTPUT_FOLDER_PATH, outputFolder, DISTANCE_OUTPUT_FILE), searchResults.Select(res => res.DistanceMatrix.ToString()));
+
+            List<KeyValuePair<ComplexCodeBlock, ComplexCodeBlock>> similarCodeBlocks = new List<KeyValuePair<ComplexCodeBlock, ComplexCodeBlock>>();
+            foreach (var searchResult in searchResults)
+            {
+                if (searchResult.ListOfKeywords.Length == 1 && searchResult.ListOfKeywords[0] == CodeBlock.ELLIPSIS + CodeBlock.BEGIN_COMMENT_BLOCK)
+                    continue;
+                string outputFileName = string.Format(CODE_OUTPUT_FILE, searchResult.GetFileName() + SearchResult.FILENAME_SEPARATOR + MAX_LEVEL.ToString());
+                string outputFilePath = Path.Combine(OUTPUT_FOLDER_PATH, outputFolder, SIMILAR_FOLDER, outputFileName);
+                var codeblockGroups = searchResult.DistanceMatrix.GetSimilarCodeBlocks(MAX_LEVEL);
+                if (codeblockGroups.Count > 0)
+                    File.WriteAllLines(outputFilePath, codeblockGroups
+                        .Select(group => CodeBlock.BEGIN_GROUP_SEPARATOR + Environment.NewLine + string.Join(Environment.NewLine, group.Select(block => block.ToString()))
+                            + Environment.NewLine + CodeBlock.END_GROUP_SEPARATOR));
+            }
+        }
+
         static void Main(string[] args)
         {
             List<string> keywords = SearchKeywords(SEARCH_PATH, SEARCH_FILTER, ExcludedPaths);
@@ -123,13 +160,13 @@ namespace RazorCodeSearcher
                 string solutionFilePath = solution.SolutionFilePath;
                 List<string> projectFolderPaths = GetProjectFolderPaths(solutionFilePath);
                 projectFolderPaths.AddRange(solution.IncludedFolderPaths);
-                string outputPath = solution.OutputFilePath;
+                string outputFolder = solution.OutputFolder;
                 excludedFolderPaths.AddRange(projectFolderPaths);
-                List<KeywordsSearchResult> searchResult = SearchCodeBlocks(SEARCH_PATH, SEARCH_FILTER, ListOfKeywords, ExcludedPaths, projectFolderPaths);
-                File.WriteAllLines(Path.Combine(OUTPUT_FOLDER_PATH, outputPath), searchResult.Select(res => res.ToString()));
+                List<KeywordsSearchResult> searchResult = SearchCodeBlocks(SEARCH_PATH, SEARCH_FILTER, ListOfKeywords, ExcludedPaths, outputFolder, projectFolderPaths);
+                SearchSimilarCodeBlockPairs(searchResult, outputFolder);
             }
-            List<KeywordsSearchResult> remainingSearchResults = SearchCodeBlocks(SEARCH_PATH, SEARCH_FILTER, ListOfKeywords, excludedFolderPaths.ToArray());
-            File.WriteAllLines(Path.Combine(OUTPUT_FOLDER_PATH, REMAINING_OUTPUT_FILE), remainingSearchResults.Select(res => res.ToString()));
+            List<KeywordsSearchResult> remainingSearchResults = SearchCodeBlocks(SEARCH_PATH, SEARCH_FILTER, ListOfKeywords, excludedFolderPaths.ToArray(), REMAINING_FOLDER);
+            SearchSimilarCodeBlockPairs(remainingSearchResults, REMAINING_FOLDER);
         }
     }
 }
